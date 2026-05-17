@@ -8,6 +8,7 @@ export interface AppConfig {
 export interface JwtConfig {
   secret: string;
   algorithm: string;
+  expiresIn: string;
   issuer?: string;
   audience?: string;
 }
@@ -41,6 +42,7 @@ export default () => ({
   jwt: {
     secret: process.env.JWT_SECRET ?? '',
     algorithm: process.env.JWT_ALGORITHM ?? 'HS256',
+    expiresIn: process.env.JWT_EXPIRES_IN ?? '7d',
     issuer: process.env.JWT_ISSUER,
     audience: process.env.JWT_AUDIENCE,
   } as JwtConfig,

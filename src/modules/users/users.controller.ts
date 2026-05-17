@@ -7,10 +7,10 @@ import { StoreId } from '../../common/decorators/store-id.decorator';
 import { AuthUser } from '../../common/types/auth-user';
 
 @ApiTags('users')
-@ApiBearerAuth()
+// @ApiBearerAuth()
 @Controller('users')
 export class UsersController {
-  constructor(private readonly users: UsersService) {}
+  constructor(private readonly users: UsersService) { }
 
   @Get('me')
   @ApiOperation({ summary: 'Get the currently authenticated user (cached)' })
@@ -23,4 +23,10 @@ export class UsersController {
   getById(@Param('id') id: string, @StoreId() storeId: string) {
     return this.users.getById(id, storeId);
   }
+  @Get('list')
+  // @ApiOperation({ summary: 'Get a user by id within the active store' })
+  usersList(@StoreId() storeId: string) {
+    return this.users.usersList(storeId);
+  }
+
 }

@@ -11,7 +11,7 @@ export class UsersService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   async getMe(user: AuthUser) {
     const ttl = this.config.get<number>('cacheTtl.user') ?? 300;
@@ -49,4 +49,20 @@ export class UsersService {
     if (!row) throw new NotFoundException('User not found');
     return row;
   }
+  async usersList(storeId: string) {
+    const row = await this.prisma.user.findFirst({
+      where: {},
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        role: true,
+        storeId: true,
+        isActive: true,
+        createdAt: true,
+      },
+    });
+    return [];
+  }
+
 }
