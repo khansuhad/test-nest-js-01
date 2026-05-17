@@ -1,0 +1,314 @@
+// Hisab247 — Prisma schema (PostgreSQL)
+// Multi-tenant: every business table carries `storeId` and is indexed by it.
+// Schema aligned with API_MIGRATION_SPECIFICATION.md (mobile-first auth,
+// 6-digit publicIds, ServiceStatus enum, custom FinanceCategory, devices).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =========================================================
+// Enums
+// =========================================================
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CASHIER
+}
+
+enum SubscriptionPlanTier {
+  FREE
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+}
+
+enum FinanceType {
+  INCOME
+  EXPENSE
+}
+
+enum ServiceStatus {
+  PENDING
+  RECEIVED
+  IN_PROGRESS
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+// =========================================================
+// Identity & Tenancy
+// =========================================================
+
+model Store {
+  id           String   @id @default(cuid())
+  publicId     String   @unique // 6-digit public identifier
+  name         String
+  slug         String?  @unique
+  ownerId      String
+  businessType String?
+  currency     String   @default("USD")
+  timezone     String   @default("UTC")
+  email        String?
+  phone        String?
+  address      String?
+  isActive     Boolean  @default(true)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  users         User[]
+  customers     Customer[]
+  finances      Finance[]
+  services      Service[]
+  subscription  Subscription?
+  categories    FinanceCategory[]
+  devices       DeviceLogin[]
+
+  @@index([ownerId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("stores")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  publicId      String?  @unique
+  mobile        String   @unique
+  email         String?  @unique
+  password      String?  // bcrypt hash; nullable because users can sign in via OTP-only flows
+  name          String?
+  role          UserRole @default(CASHIER)
+  storeId       String?  // nullable: a user may exist before being assigned to a store
+  isActive      Boolean  @default(true)
+  isVerified    Boolean  @default(false)
+  profilePhoto  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  store    Store?    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  finances Finance[] @relation("FinanceCreatedBy")
+  customers Customer[] @relation("CustomerCreatedBy")
+  devices  DeviceLogin[]
+
+  @@index([storeId])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model DeviceLogin {
+  id          String   @id @default(cuid())
+  storeId     String
+  userId      String?
+  deviceId    String   // device fingerprint
+  deviceToken String?  // UUID issued at login
+  userAgent   String?
+  ipAddress   String?
+  isTrusted   Boolean  @default(false)
+  lastLoginAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, deviceId])
+  @@index([storeId, isTrusted])
+  @@map("device_logins")
+}
+
+// =========================================================
+// Customers
+// =========================================================
+
+model Customer {
+  id        String   @id @default(cuid())
+  publicId  String   // 6-digit public id, unique within a store
+  storeId   String
+  name      String
+  email     String?
+  phone     String?
+  address   String?
+  city      String?
+  notes     String?
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  deletedAt DateTime?
+
+  store    Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  creator  User? @relation("CustomerCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  finances Finance[]
+
+  @@unique([storeId, publicId])
+  @@unique([storeId, phone])
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("customers")
+}
+
+// =========================================================
+// Services (POS repair jobs)
+// =========================================================
+
+model Service {
+  id              String        @id @default(cuid())
+  publicId        String        // 6-digit public id, unique within a store
+  storeId         String
+  name            String
+  number          String?       // customer contact phone for this job
+  model           String?       // device model, e.g. "iPhone 15 Pro"
+  problem         String?       // defect description
+  status          ServiceStatus @default(PENDING)
+  price           Decimal       @db.Decimal(14, 2)
+  partsCost       Decimal       @default(0) @db.Decimal(14, 2)
+  discount        Decimal       @default(0) @db.Decimal(14, 2)
+  advancedAmount  Decimal       @default(0) @db.Decimal(14, 2)
+  finalPrice      Decimal?      @db.Decimal(14, 2)
+  // catalog-style fields kept from earlier iteration
+  description     String?
+  taxRate         Decimal       @default(0) @db.Decimal(5, 2)
+  isActive        Boolean       @default(true)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  finances Finance[]
+
+  @@unique([storeId, publicId])
+  @@index([storeId, status, createdAt(sort: Desc)])
+  @@index([storeId, createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@map("services")
+}
+
+// =========================================================
+// Finance (income / expense / ledger)
+// affectType is an array of tags: "cash" and/or "profit"
+// =========================================================
+
+model Finance {
+  id             String      @id @default(cuid())
+  publicId       String      // 6-digit invoice id, unique within a store
+  storeId        String
+  type           FinanceType // INCOME / EXPENSE
+  amount         Decimal     @db.Decimal(14, 2)
+  currency       String      @default("USD")
+  category       String?     // e.g. "service_payment", "operating_expenses", "cash_in"
+  subcategory    String?     // e.g. "advanced_payment", "rent", "owner_investment"
+  affectType     String[]    @default([]) // ["profit"] | ["cash"] | ["profit","cash"]
+  date           DateTime    @default(now())
+  occurredAt     DateTime    @default(now())
+  notes          String?
+  description    String?
+
+  customerId     String?
+  customerName   String?     // denormalised for fast list rendering
+  customerPhone  String?
+
+  serviceId      String?
+  createdBy      String?
+
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  store    Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  customer Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  service  Service?  @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  creator  User?     @relation("FinanceCreatedBy", fields: [createdBy], references: [id], onDelete: SetNull)
+
+  @@unique([storeId, publicId])
+  @@index([storeId, type, createdAt(sort: Desc)])
+  @@index([storeId, date(sort: Desc)])
+  @@index([storeId, category, createdAt(sort: Desc)])
+  @@index([storeId, serviceId])
+  @@index([deletedAt])
+  @@map("finances")
+}
+
+// =========================================================
+// Custom FinanceCategory (per-store overrides on top of DEFAULTS)
+// =========================================================
+
+model FinanceCategory {
+  id            String   @id @default(cuid())
+  storeId       String
+  label         String
+  value         String
+  type          FinanceType // INCOME | EXPENSE
+  affectType    String[]    @default([])
+  subcategories Json        @default("[]") // [{ label, value }]
+  isCustom      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, value])
+  @@index([storeId, type])
+  @@map("finance_categories")
+}
+
+// =========================================================
+// Subscription Plans (catalog) and per-store Subscription
+// =========================================================
+
+model Plan {
+  id               String               @id @default(cuid())
+  tier             SubscriptionPlanTier @unique
+  name             String
+  priceMonthly     Decimal              @db.Decimal(12, 2)
+  priceYearly      Decimal              @db.Decimal(12, 2)
+  maxUsers         Int                  @default(1)
+  maxCustomers     Int                  @default(100)
+  maxJobsPerMonth  Int                  @default(50)
+  features         Json
+  isActive         Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                String              @id @default(cuid())
+  storeId           String              @unique
+  planId            String
+  status            SubscriptionStatus  @default(TRIALING)
+  startedAt         DateTime            @default(now())
+  currentPeriodEnd  DateTime
+  cancelledAt       DateTime?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  plan  Plan  @relation(fields: [planId], references: [id])
+
+  @@index([planId])
+  @@index([status])
+  @@map("subscriptions")
+}

@@ -1,0 +1,80 @@
+# NOTE: top-level `version:` removed — deprecated since Compose v2.
+# Compose now infers schema from the file content.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hisab247-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hisab247
+      POSTGRES_PASSWORD: hisab247
+      POSTGRES_DB: hisab247
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hisab247 -d hisab247"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: hisab247-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hisab247-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Default values for DOCKER mode. Override by copying
+    # `.env.docker.example` to `.env.docker` and running:
+    #   docker compose --env-file .env.docker up --build
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      GLOBAL_API_PREFIX: api/v1
+      # IMPORTANT: hostnames use the docker service names, NOT localhost.
+      DATABASE_URL: postgresql://hisab247:hisab247@postgres:5432/hisab247?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      REDIS_KEY_PREFIX: "hisab247:"
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret-hisab247-postman-testing-32+chars}
+      JWT_ALGORITHM: HS256
+      JWT_ISSUER: hisab247-frontend
+      JWT_AUDIENCE: hisab247-backend
+      RATE_LIMIT_TTL_SECONDS: 60
+      RATE_LIMIT_MAX: 120
+      CACHE_TTL_DASHBOARD: 60
+      CACHE_TTL_FINANCE_SUMMARY: 120
+      CACHE_TTL_USER: 300
+      CORS_ORIGINS: "*"
+    ports:
+      - "3000:3000"
+    # Run migrations + seed once, then boot the compiled app.
+    command: >
+      sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
+
+volumes:
+  postgres_data:
+  redis_data:
