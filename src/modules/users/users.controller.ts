@@ -17,7 +17,6 @@ export class UsersController {
   getMe(@CurrentUser() user: AuthUser) {
     return this.users.getMe(user);
   }
-
   @Get(':id')
   @ApiOperation({ summary: 'Get a user by id within the active store' })
   getById(@Param('id') id: string, @StoreId() storeId: string) {
