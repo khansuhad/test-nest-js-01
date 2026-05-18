@@ -48,24 +48,24 @@ export class AuthService {
             throw new UnauthorizedException('Invalid email or password');
         }
 
-        // const passwordOk = await bcrypt.compare(password, user.password);
-        // if (!passwordOk) {
-        //   throw new UnauthorizedException('Invalid email or password');
-        // }
+        const passwordOk = await bcrypt.compare(password, user.password);
+        if (!passwordOk) {
+            throw new UnauthorizedException('Invalid email or password');
+        }
 
-        // if (!user.isActive) {
-        //   throw new UnauthorizedException('Account is disabled');
-        // }
+        if (!user.isActive) {
+            throw new UnauthorizedException('Account is disabled');
+        }
 
-        // if (!user.storeId) {
-        //   throw new UnauthorizedException('No store assigned to this account');
-        // }
+        if (!user.storeId) {
+            throw new UnauthorizedException('No store assigned to this account');
+        }
 
         const payload: JwtPayload = {
             sub: user.id,
             email: user.email,
             role: user.role,
-            // storeId: user.storeId,
+            storeId: user.storeId,
         };
 
         const accessToken = await this.jwt.signAsync(payload);

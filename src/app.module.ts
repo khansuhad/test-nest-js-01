@@ -22,6 +22,7 @@ import { ServicesModule } from './modules/services/services.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { PlansModule } from './modules/plans/plans.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { AdminModule } from './modules/admin/admin.module';
 
 @Module({
   imports: [
@@ -50,6 +51,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
     SubscriptionsModule,
     PlansModule,
     DashboardModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

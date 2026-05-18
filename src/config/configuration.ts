@@ -32,6 +32,10 @@ export interface CacheTtlConfig {
   user: number;
 }
 
+export interface SeedConfig {
+  secret?: string;
+}
+
 export default () => ({
   app: {
     env: process.env.NODE_ENV ?? 'development',
@@ -62,4 +66,7 @@ export default () => ({
     financeSummary: Number(process.env.CACHE_TTL_FINANCE_SUMMARY ?? 120),
     user: Number(process.env.CACHE_TTL_USER ?? 300),
   } as CacheTtlConfig,
+  seed: {
+    secret: process.env.SEED_SECRET || undefined,
+  } as SeedConfig,
 });
