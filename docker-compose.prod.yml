@@ -1,0 +1,54 @@
+# Production overrides for VPS (Hostinger, etc.)
+#
+# Usage:
+#   cp .env.docker.example .env.docker
+#   # Edit .env.docker — set strong passwords and JWT_SECRET
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.docker up -d --build
+#
+# See DEPLOYMENT.md for the full guide (Nginx, SSL, GitHub clone).
+
+services:
+  postgres:
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hisab247}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env.docker}
+      POSTGRES_DB: ${POSTGRES_DB:-hisab247}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-hisab247} -d ${POSTGRES_DB:-hisab247}",
+        ]
+
+  redis:
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--requirepass",
+        "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env.docker}",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG",
+        ]
+      environment:
+        REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  backend:
+    env_file:
+      - .env.docker
+    ports:
+      - "127.0.0.1:${PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-hisab247}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-hisab247}?schema=public&connection_limit=20
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      RUN_DB_SEED: ${RUN_DB_SEED:-false}
+    command: >
+      sh -c "npx prisma migrate deploy &&
+      if [ \"$$RUN_DB_SEED\" = \"true\" ]; then npx prisma db seed; fi &&
+      node dist/main.js"

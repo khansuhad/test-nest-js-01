@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: hisab247
       POSTGRES_DB: hisab247
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -69,11 +69,14 @@ services:
       CACHE_TTL_FINANCE_SUMMARY: 120
       CACHE_TTL_USER: 300
       CORS_ORIGINS: "*"
+      RUN_DB_SEED: ${RUN_DB_SEED:-true}
     ports:
       - "3000:3000"
-    # Run migrations + seed once, then boot the compiled app.
+    # Local Docker: migrations + optional seed (RUN_DB_SEED=true by default), then app.
     command: >
-      sh -c "npx prisma migrate deploy && npx prisma db seed && node dist/main.js"
+      sh -c "npx prisma migrate deploy &&
+      if [ \"$$RUN_DB_SEED\" = \"true\" ]; then npx prisma db seed; fi &&
+      node dist/main.js"
 
 volumes:
   postgres_data:

@@ -2,11 +2,15 @@
 
 Production-grade SaaS POS backend built with NestJS, PostgreSQL (Prisma), and Redis.
 
-## Quick start
+## Deploy to VPS (Hostinger + GitHub)
+
+See **[DEPLOYMENT.md](./DEPLOYMENT.md)** for step-by-step commands (Docker, Nginx, SSL, updates).
+
+## Quick start (local)
 
 ```bash
 cp .env.example .env
-docker-compose up --build
+docker compose up --build
 ```
 
 The API is then available at `http://localhost:3000/api/v1`.

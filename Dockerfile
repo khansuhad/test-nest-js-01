@@ -46,6 +46,7 @@ RUN if [ -f package-lock.json ]; then \
     else \
       npm install --omit=dev; \
     fi \
+ && npm install prisma@5.18.0 ts-node@10.9.2 typescript@5.5.4 --no-save \
  && npx prisma generate
 
 COPY --from=builder /app/dist ./dist
