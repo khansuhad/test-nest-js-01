@@ -1,6 +1,8 @@
 import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { FinanceType, UserRole } from '@prisma/client';
+import { FinanceType } from '@prisma/client';
+
+import { UserRole } from '../../common/enums/user-role';
 
 import { FinanceCategoriesService, FinanceCategoryDto } from './finance-categories.service';
 import { StoreId } from '../../common/decorators/store-id.decorator';

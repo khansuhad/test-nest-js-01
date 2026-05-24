@@ -1,4 +1,6 @@
-import { UserRole, SubscriptionPlanTier } from '@prisma/client';
+import { SubscriptionPlanTier } from '@prisma/client';
+
+import { UserRole } from '../enums/user-role';
 
 export interface AuthUser {
   userId: string;

@@ -8,7 +8,9 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { FinanceType, UserRole } from '@prisma/client';
+import { FinanceType } from '@prisma/client';
+
+import { UserRole } from '../../common/enums/user-role';
 
 import { FinanceService } from './finance.service';
 import { CreateFinanceDto } from './dto/create-finance.dto';

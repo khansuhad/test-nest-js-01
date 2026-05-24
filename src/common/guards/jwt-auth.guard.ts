@@ -8,7 +8,9 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
-import { UserRole, SubscriptionPlanTier } from '@prisma/client';
+import { SubscriptionPlanTier } from '@prisma/client';
+
+import { UserRole, USER_ROLE_VALUES } from '../enums/user-role';
 import type { Algorithm } from 'jsonwebtoken';
 
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -93,7 +95,7 @@ export class JwtAuthGuard implements CanActivate {
     if (!p.role) throw new UnauthorizedException('Token missing role');
 
     const role = p.role.toUpperCase() as UserRole;
-    if (!Object.values(UserRole).includes(role)) {
+    if (!USER_ROLE_VALUES.includes(role)) {
       throw new UnauthorizedException(`Unknown role: ${p.role}`);
     }
 

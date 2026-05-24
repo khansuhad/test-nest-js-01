@@ -1,6 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../../common/enums/user-role';
 
 import { SubscriptionsService } from './subscriptions.service';
 import { UpgradeSubscriptionDto } from './dto/upgrade-subscription.dto';

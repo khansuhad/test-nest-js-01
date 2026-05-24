@@ -46,8 +46,11 @@ RUN if [ -f package-lock.json ]; then \
     else \
       npm install --omit=dev; \
     fi \
- && npm install prisma@5.18.0 ts-node@10.9.2 typescript@5.5.4 --no-save \
- && npx prisma generate
+ && npm install prisma@5.18.0 ts-node@10.9.2 typescript@5.5.4 --no-save
+
+# Generated client from builder — guarantees UserRole and other enums exist at runtime.
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma/client ./node_modules/@prisma/client
 
 COPY --from=builder /app/dist ./dist
 

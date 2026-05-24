@@ -5,9 +5,10 @@ import {
   ServiceStatus,
   SubscriptionPlanTier,
   SubscriptionStatus,
-  UserRole,
 } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+
+import { UserRole } from '../../common/enums/user-role';
 
 import { PrismaService } from '../../prisma/prisma.service';
 

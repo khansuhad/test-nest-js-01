@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { UserRole } from '@prisma/client';
+import { UserRole } from '../../common/enums/user-role';
 
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
